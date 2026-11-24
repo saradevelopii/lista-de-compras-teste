@@ -1,0 +1,76 @@
+<!doctype html>
+<html lang="pt-BR"><head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>Qlista</title>
+  <meta name="robots" content="noindex">
+  <meta name="theme-color" content="#14397a">
+  <noscript><meta http-equiv="refresh" content="0; url=https://qlista.pages.dev/"></noscript>
+  <style>
+    html, body { height: 100%; margin: 0; }
+    body { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 18px;
+      padding: 0 40px; box-sizing: border-box; text-align: center; color: #fff;
+      font-family: system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+      background: linear-gradient(160deg, #14397a, #1B4E9B); }
+    h1 { margin: 0; font-size: 3.4rem; }
+    h2 { margin: 0; font-size: 1.5rem; }
+    p { margin: 0; font-size: 1.05rem; line-height: 1.4; opacity: .9; }
+    a { color: #fff; }
+    .giro { width: 44px; height: 44px; border: 5px solid rgba(255,255,255,.3); border-top-color: #fff;
+      border-radius: 50%; animation: gira 1s linear infinite; }
+    @keyframes gira { to { transform: rotate(360deg); } }
+  </style>
+</head><body>
+  <h1>Qlista</h1>
+  <div class="giro"></div>
+  <h2>Mudamos de endereço</h2>
+  <p>Estamos levando suas listas para o endereço novo. Isso leva só um instante.</p>
+  <p><a id="manual" href="https://qlista.pages.dev/">Se não abrir sozinho, toque aqui.</a></p>
+  <script>
+  (function () {
+    var NOVO = 'https://qlista.pages.dev/';
+    var jaFoi = false;
+
+    function ir(hashExtra) {
+      if (jaFoi) return;
+      jaFoi = true;
+      // mantém o #lista=ID de links compartilhados antes da mudança
+      var antigo = location.hash.replace(/^#/, '').split('&').filter(function (p) { return p && p.indexOf('migrar=') !== 0; });
+      if (hashExtra) antigo.push(hashExtra);
+      location.replace(NOVO + (antigo.length ? '#' + antigo.join('&') : ''));
+    }
+
+    // garante a saída mesmo se algo travar
+    setTimeout(function () { ir(''); }, 2500);
+
+    // o app antigo guardava tudo no localStorage deste mesmo endereço
+    var dados = {};
+    try {
+      Object.keys(localStorage).forEach(function (k) {
+        if (/^sacola:(listas|pastas|categorias-personalizadas|historico|itens:[A-Za-z0-9_-]+|config:[A-Za-z0-9_-]+)$/.test(k)) {
+          dados[k] = localStorage.getItem(k);
+        }
+      });
+    } catch (e) {}
+    if (!dados['sacola:listas']) { ir(''); return; }
+
+    var json = JSON.stringify({ v: 1, dados: dados });
+
+    function paraBase64Url(bytes) {
+      var bin = '';
+      for (var i = 0; i < bytes.length; i++) bin += String.fromCharCode(bytes[i]);
+      return btoa(bin).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
+    }
+
+    var bytes = new TextEncoder().encode(json);
+    if (window.CompressionStream) {
+      var fluxo = new Blob([bytes]).stream().pipeThrough(new CompressionStream('gzip'));
+      new Response(fluxo).arrayBuffer().then(function (buf) {
+        ir('migrar=g.' + paraBase64Url(new Uint8Array(buf)));
+      }, function () { ir('migrar=j.' + paraBase64Url(bytes)); });
+    } else {
+      ir('migrar=j.' + paraBase64Url(bytes));
+    }
+  })();
+  </script>
+</body></html>
